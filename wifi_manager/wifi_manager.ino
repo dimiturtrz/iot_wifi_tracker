@@ -109,5 +109,5 @@ void loop() {
     sentNotification = true;
   }
   
-  delay(5000);
+  delay(10000);
 }
