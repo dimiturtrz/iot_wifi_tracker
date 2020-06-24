@@ -1,13 +1,17 @@
 #include <WiFiManager.h>
+#define SYSTEM_LED 2 //Define blinking LED pin
 
 const char* logServer = "api.pushingbox.com";
 
 String deviceId;
 String objectName;
 
+
+WiFiManager wifiManager;
+WiFiManagerParameter deviceIdParameter("pushing box scenario device id", "enter device id", "", 40);
+WiFiManagerParameter objectNameParameter("object name", "enter object name", "object", 40);
+
 void setupWifiManager() {
-  
-  WiFiManager wifiManager;
   
   // In order to have the oportunity to set the devid (could be commented out)
   wifiManager.resetSettings();
@@ -15,15 +19,29 @@ void setupWifiManager() {
   // to be certain where to look
   wifiManager.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
 
-  WiFiManagerParameter deviceIdParameter("pushing box scenario device id", "enter device id", "", 40);
   wifiManager.addParameter(&deviceIdParameter);
-  WiFiManagerParameter objectNameParameter("object name", "enter object name", "object", 40);
   wifiManager.addParameter(&objectNameParameter);
 
   wifiManager.autoConnect("ESP8622TrackerAP", "securePassword");
 
   deviceId = deviceIdParameter.getValue();
   objectName = objectNameParameter.getValue();
+}
+
+void reconnectWifiManager() {
+  Serial.println("reconnecting");
+  wifiManager.autoConnect("ESP8622TrackerAP", "securePassword");
+
+  deviceId = deviceIdParameter.getValue();
+  objectName = objectNameParameter.getValue();
+}
+
+void manageConnection() {
+  pinMode(SYSTEM_LED, (WiFi.status() == WL_CONNECTED) ? HIGH : LOW);
+  
+  if(WiFi.status() != WL_CONNECTED) {
+    reconnectWifiManager();  
+  }  
 }
 
 void sendNotification(){
@@ -77,15 +95,19 @@ void setup() {
 boolean sentNotification = false;
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  manageConnection();
+  
   Serial.println(objectName);
   long rssi = WiFi.RSSI();
   Serial.print("RSSI:");
   Serial.println(rssi);
-  if(!sentNotification /*&& rssi < -80*/ ) {
+
+  
+  if(!sentNotification && rssi < -80 ) {
     Serial.println("sending");
     sendNotification();
     sentNotification = true;
   }
-  delay(10000);
+  
+  delay(5000);
 }
